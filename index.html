@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شاشة الحصص</title>
+
+<style>
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: Tahoma, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+
+  background-color: #f5f6fa;
+  background-image:
+    linear-gradient(
+      rgba(255,255,255,0.65),
+      rgba(255,255,255,0.65)
+    ),
+    url("logo.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+body > div:first-child {
+  width: 100%;
+  flex-shrink: 0;
+  animation: scrolling 20s linear infinite;
+}
+
+#lesson {
+  font-size: 9vw;
+  font-weight: bold;
+  color: #416f84;
+  margin-bottom: 30px;
+  text-shadow: 0 2px 6px white;
+}
+
+#time {
+  font-size: 7vw;
+  font-weight: bold;
+  color: #805d87;
+  direction: ltr;
+  text-shadow: 0 2px 6px white;
+}
+
+#controls {
+  position: fixed;
+  bottom: 15px;
+  left: 0;
+  width: 100%;
+  z-index: 2;
+}
+
+button {
+  font-family: inherit;
+  font-size: 20px;
+  padding: 12px 20px;
+  margin: 5px;
+  border: 2px solid #a6cddd;
+  border-radius: 12px;
+  background: #d6e991;
+  color: #354f60;
+  cursor: pointer;
+}
+
+button:first-child {
+  background: #d6b8d7;
+}
+
+#status {
+  display: inline-block;
+  color: #354f60;
+  background: rgba(255,255,255,0.95);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 16px;
+  margin: 10px;
+}
+
+@keyframes scrolling {
+  from {
+    transform: translateX(100vw);
+  }
+
+  to {
+    transform: translateX(-100vw);
+  }
+}
+</style></head>
+
+<body>
+
+<div>
+  <div id="lesson"></div>
+  <div id="time"></div>
+</div>
+
+<div id="controls">
+  <button onclick="testSound()">تجربة الصوت</button>
+  <button onclick="startScreen()">تشغيل الشاشة والصوت</button>
+  <div id="status"></div>
+</div>
+
+<script>
+var lessons = [
+  {name: "الحصة الأولى", start: "07:15", end: "08:00"},
+  {name: "الحصة الثانية", start: "08:00", end: "08:45"},
+  {name: "الفسحة", start: "08:45", end: "09:00"},
+  {name: "الحصة الثالثة", start: "09:00", end: "09:45"},
+  {name: "الحصة الرابعة", start: "09:45", end: "10:30"},
+  {name: "الحصة الخامسة", start: "10:30", end: "11:45"},
+  {name: "الحصة السادسة", start: "11:45", end: "12:00"},
+
+  {name: "الحصة الأولى", start: "13:30", end: "14:15"},
+  {name: "الحصة الثانية", start: "14:15", end: "15:00"},
+  {name: "الحصة الثالثة", start: "15:00", end: "15:45"},
+  {name: "الفسحة", start: "15:45", end: "16:00"},
+  {name: "الحصة الرابعة", start: "16:00", end: "16:45"},
+  {name: "الحصة الخامسة", start: "16:45", end: "17:30"},
+  {name: "الحصة السادسة", start: "17:30", end: "18:15"}
+];
+
+var soundEnabled = false;
+var announced = {};
+var arabicVoice = null;
+
+function toMinutes(time) {
+  var parts = time.split(":");
+  return Number(parts[0]) * 60 + Number(parts[1]);
+}
+
+// البحث عن صوت عربي
+function loadVoices() {
+  arabicVoice = null;
+
+  if (!("speechSynthesis" in window) ||
+      !("SpeechSynthesisUtterance" in window)) {
+    document.getElementById("status").textContent =
+      "هذا المتصفح لا يدعم النطق. جرّبي متصفحًا آخر.";
+    return;
+  }
+
+  var voices = window.speechSynthesis.getVoices();
+
+  for (var i = 0; i < voices.length; i++) {
+    if (/^ar([-_]|$)/i.test(voices[i].lang)) {
+      arabicVoice = voices[i];
+
+      // نفضّل صوتًا محليًا إن وجد
+      if (voices[i].localService) {
+        break;
+      }
+    }
+  }
+
+  document.getElementById("status").textContent =
+    arabicVoice
+    ? "الصوت العربي جاهز: " + arabicVoice.name
+    : "لم يظهر صوت عربي بعد. جرّبي زر تجربة الصوت.";
+}
+
+function speak(text) {
+  if (!arabicVoice) {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  var message = new SpeechSynthesisUtterance(text);
+  message.voice = arabicVoice;
+  message.lang = arabicVoice.lang;
+  message.rate = 0.85;
+  message.volume = 1;
+
+  message.onerror = function(event) {
+    if (event.error === "canceled" ||
+        event.error === "interrupted") {
+      return;
+    }
+
+    document.getElementById("controls").style.display = "block";
+    document.getElementById("status").textContent =
+      "تعذّر تشغيل الصوت. جرّبي زر تجربة الصوت مجددًا.";
+  };
+
+  window.speechSynthesis.speak(message);
+}
+
+function testSound() {
+  loadVoices();
+
+  if (!arabicVoice) {
+    alert("لم يتوفر صوت عربي. ابعثيلي الرسالة الظاهرة أسفل الشاشة.");
+    return;
+  }
+
+  speak("الحصة الأولى");
+}
+
+function updateScreen() {
+  // الوقت بتوقيت قطر
+  var qatar = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  var now = qatar.getUTCHours() * 60 + qatar.getUTCMinutes();
+
+  var title = "انتهت الحصص";
+  var hours = "18:15";
+  var currentLesson = null;
+
+  if (now < toMinutes("07:15")) {
+    title = "لم تبدأ الحصص";
+    hours = "07:15";
+  } else if (now >= toMinutes("12:00") &&
+             now < toMinutes("13:30")) {
+    title = "انتهت حصص الصباح";
+    hours = "12:00";
+  }
+
+  for (var i = 0; i < lessons.length; i++) {
+    var lesson = lessons[i];
+
+    if (now >= toMinutes(lesson.start) &&
+        now < toMinutes(lesson.end)) {
+      currentLesson = lesson;
+      title = lesson.name;
+      hours = lesson.start + " – " + lesson.end;
+      break;
+    }
+  }
+
+  document.getElementById("lesson").textContent = title;
+  document.getElementById("time").textContent = hours;
+
+  // نطق اسم الحصة مرة واحدة في كل يوم
+  if (soundEnabled && currentLesson && arabicVoice) {
+    var day = qatar.getUTCFullYear() + "-" +
+              qatar.getUTCMonth() + "-" +
+              qatar.getUTCDate();
+
+    var key = day + "-" + currentLesson.start;
+
+    if (!announced[key]) {
+      announced[key] = true;
+      speak(currentLesson.name);
+    }
+  }
+}
+
+function startScreen() {
+  loadVoices();
+
+  if (!arabicVoice) {
+    alert("يلزم صوت عربي قبل تشغيل الصوت. اضغطي تجربة الصوت وابعثيلي النتيجة.");
+    return;
+  }
+
+  soundEnabled = true;
+  updateScreen();
+
+  var page = document.documentElement;
+  var full = page.requestFullscreen ||
+             page.msRequestFullscreen ||
+             page.webkitRequestFullscreen;
+
+  if (full) {
+    try {
+      var result = full.call(page);
+
+      if (result && result.catch) {
+        result.catch(function() {});
+      }
+    } catch (error) {}
+  }
+
+  document.getElementById("controls").style.display = "none";
+}
+
+document.ondblclick = function() {
+  document.getElementById("controls").style.display = "block";
+};
+
+document.addEventListener("visibilitychange", function() {
+  if (!document.hidden) {
+    updateScreen();
+  }
+});
+
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+loadVoices();
+updateScreen();
+setInterval(updateScreen, 1000);
+</script>
+
+</body>
+</html>
