@@ -52,16 +52,20 @@ function loadVoices(){
  if(!("speechSynthesis" in window)||!("SpeechSynthesisUtterance" in window)){document.getElementById("status").textContent="هذا المتصفح لا يدعم النطق. جرّبي متصفحًا آخر.";return;}
  var voices=window.speechSynthesis.getVoices();
  for(var i=0;i<voices.length;i++){if(/^ar([-_]|$)/i.test(voices[i].lang)){arabicVoice=voices[i];if(voices[i].localService){break;}}}
- document.getElementById("status").textContent=arabicVoice?"الصوت العربي جاهز: "+arabicVoice.name:"لم يظهر صوت عربي بعد. جرّبي زر تجربة الصوت.";
+ document.getElementById("status").textContent=arabicVoice?"الصوت العربي جاهز: "+arabicVoice.name:"لم يظهر صوت عربي. جرّبي تجربة الصوت؛ إذا بقي صامتًا يلزم تفعيل صوت عربي في الجهاز أو استعمال متصفح آخر.";
 }
 function speak(text){
- if(!arabicVoice){return;}
+ if(!("speechSynthesis" in window)||!("SpeechSynthesisUtterance" in window)){return;}
  window.speechSynthesis.cancel();
- var message=new SpeechSynthesisUtterance(text);message.voice=arabicVoice;message.lang=arabicVoice.lang;message.rate=.85;message.volume=1;
+ var message=new SpeechSynthesisUtterance(text);if(arabicVoice){message.voice=arabicVoice;}message.lang=arabicVoice?arabicVoice.lang:"ar-SA";message.rate=.85;message.volume=1;
  message.onerror=function(event){if(event.error==="canceled"||event.error==="interrupted"){return;}document.getElementById("controls").style.display="block";document.getElementById("status").textContent="تعذّر تشغيل الصوت. جرّبي زر تجربة الصوت مجددًا.";};
  window.speechSynthesis.speak(message);
 }
-function testSound(){loadVoices();if(!arabicVoice){alert("لم يتوفر صوت عربي. ابعثيلي الرسالة الظاهرة أسفل الشاشة.");return;}speak("الحصة الأولى");}
+function testSound(){
+ loadVoices();
+ if(!("speechSynthesis" in window)||!("SpeechSynthesisUtterance" in window)){return;}
+ speak(document.getElementById("lesson").textContent || "تجربة الصوت");
+}
 function pad(number){return number<10?"0"+number:String(number);}
 function updateScreen(){
  var qatar=new Date(Date.now()+3*60*60*1000);
@@ -75,18 +79,38 @@ function updateScreen(){
  if(now<toMinutes("07:15")){title="لم تبدأ الحصص";hours="07:15";}else if(now>=toMinutes("12:00")&&now<toMinutes("13:30")){title="انتهت حصص الصباح";hours="12:00";}
  for(var i=0;i<lessons.length;i++){var lesson=lessons[i];if(now>=toMinutes(lesson.start)&&now<toMinutes(lesson.end)){currentLesson=lesson;title=lesson.name;hours=lesson.start+" – "+lesson.end;break;}}
  document.getElementById("lesson").textContent=title;document.getElementById("time").textContent=hours;
- if(soundEnabled&&currentLesson&&arabicVoice){var day=qatar.getUTCFullYear()+"-"+qatar.getUTCMonth()+"-"+qatar.getUTCDate();var key=day+"-"+currentLesson.start;if(!announced[key]){announced[key]=true;speak(currentLesson.name);}}
+ if(soundEnabled&&currentLesson&&("speechSynthesis" in window)){var day=qatar.getUTCFullYear()+"-"+qatar.getUTCMonth()+"-"+qatar.getUTCDate();var key=day+"-"+currentLesson.start;if(!announced[key]){announced[key]=true;speak(currentLesson.name);}}
+}
+function screenFallback(){
+ document.getElementById("controls").style.display="block";
+ document.getElementById("status").textContent="التكبير التلقائي غير متاح هنا. على Windows اضغطي F11، أو من قائمة المتصفح اختاري ملء الشاشة.";
 }
 function startScreen(){
- loadVoices();if(!arabicVoice){alert("يلزم صوت عربي قبل تشغيل الصوت. اضغطي تجربة الصوت وابعثيلي النتيجة.");return;}
- soundEnabled=true;updateScreen();
- var page=document.documentElement;var full=page.requestFullscreen||page.msRequestFullscreen||page.webkitRequestFullscreen;
- if(full){try{var result=full.call(page);if(result&&result.catch){result.catch(function(){});}}catch(error){}}
- document.getElementById("controls").style.display="none";
+ // طلب ملء الشاشة مباشرة عند الضغط، قبل إعداد الصوت.
+ var page=document.documentElement;
+ var full=page.requestFullscreen||page.msRequestFullscreen||page.webkitRequestFullscreen;
+ if(full){
+  try{
+   var result=full.call(page);
+   if(result&&result.catch){result.catch(screenFallback);}
+  }catch(error){screenFallback();}
+ }else{screenFallback();}
+ loadVoices();
+ soundEnabled=true;
+ updateScreen();
+ if(arabicVoice){
+  document.getElementById("controls").style.display="none";
+ }else{
+  document.getElementById("controls").style.display="block";
+ }
 }
+document.addEventListener("fullscreenchange",function(){
+ if(!document.fullscreenElement){document.getElementById("controls").style.display="block";}
+});
 document.ondblclick=function(){document.getElementById("controls").style.display="block";};
 document.addEventListener("visibilitychange",function(){if(!document.hidden){updateScreen();}});
-if("speechSynthesis" in window){window.speechSynthesis.onvoiceschanged=loadVoices;}
+if("speechSynthesis" in window){window.speechSynthesis.onvoiceschanged=loadVoices;
+ setTimeout(loadVoices,500);setTimeout(loadVoices,1500);setTimeout(loadVoices,3000);}
 loadVoices();updateScreen();setInterval(updateScreen,1000);
 </script>
 </body>
