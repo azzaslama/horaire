@@ -11,6 +11,7 @@ body{font-family:Tahoma,Arial,sans-serif;display:flex;align-items:center;justify
 #lesson{font-size:clamp(40px,10vw,180px);font-weight:bold;color:#416f84;margin-bottom:12px;text-shadow:0 2px 6px white}
 #countdown{position:fixed;top:12px;right:16px;z-index:3;color:#583861;text-shadow:0 2px 6px white}
 #countdownLabel{display:block;font-size:clamp(18px,3.6vmin,44px);font-weight:bold}
+#countdownLesson{display:block;font-size:clamp(14px,2.6vmin,24px);margin-top:4px;font-weight:bold}
 #remaining{display:block;font-size:clamp(34px,9vmin,100px);font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.05}
 #controls{position:fixed;bottom:15px;left:0;width:100%;z-index:2}
 button{font-family:inherit;font-size:20px;padding:12px 20px;margin:5px;border:2px solid #a6cddd;border-radius:12px;background:#d6e991;color:#354f60;cursor:pointer}
@@ -23,7 +24,7 @@ button:first-child{background:#d6b8d7}
 <div id="lessonDisplay">
  <div id="lesson"></div>
 </div>
-<div id="countdown" hidden><span id="countdownLabel">الوقت المتبقّي</span><span id="remaining" dir="ltr" role="timer" aria-labelledby="countdownLabel"></span></div>
+<div id="countdown" hidden><span id="countdownLabel">الوقت المتبقّي</span><span id="remaining" dir="ltr" role="timer" aria-labelledby="countdownLabel"></span><span id="countdownLesson"></span></div>
 <div id="controls"><button onclick="testSound()">تجربة الصوت</button><button onclick="startScreen()">تشغيل الشاشة والصوت</button><div id="status"></div></div>
 <script>
 var lessons=[
@@ -74,6 +75,7 @@ function updateScreen(){
  document.getElementById("lesson").textContent=title;
  document.getElementById("countdown").hidden=!currentLesson;
  if(currentLesson){
+  document.getElementById("countdownLesson").textContent=currentLesson.name;
   var remainingSeconds=(toMinutes(currentLesson.end)-now)*60-seconds;
   document.getElementById("remaining").textContent=
    pad(Math.floor(remainingSeconds/60))+":"+pad(remainingSeconds%60);
